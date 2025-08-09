@@ -1,0 +1,718 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Java Competitive Programming — Full Extended Cheat Sheet</title>
+    <style>
+        body { font-family: Inter, Segoe UI, Arial; margin: 0; padding: 0; background: #0f172a; color: #e6eef8 }
+        header { background: #0b1220; padding: 24px 32px; border-bottom: 1px solid rgba(255, 255, 255, 0.04) }
+        .container { max-width: 980px; margin: 28px auto; padding: 24px; background: #07102a; border-radius: 12px; box-shadow: 0 10px 30px rgba(2, 6, 23, 0.6) }
+        h1, h2, h3 { color: #dbeafe }
+        p { color: #cfe8ff }
+        pre { background: #071428; padding: 14px; border-radius: 8px; overflow: auto; color: #d6f6ff }
+        code { font-family: Consolas, monospace }
+        nav { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 18px }
+        a.toc { background: #06223a; padding: 8px 10px; border-radius: 8px; color: #bfe3ff; text-decoration: none }
+        .section { margin-top: 22px; padding-top: 8px; border-top: 1px dashed rgba(255, 255, 255, 0.04) }
+        table { border-collapse: collapse; width: 100%; }
+        td, th { padding: 6px 10px; border: 1px solid rgba(255, 255, 255, 0.04); }
+        .hint { color: #9fe0ff; font-size: 0.95rem }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Java Competitive Programming — Full Extended Cheat Sheet</h1>
+            <p class="hint">Paste these snippets directly in contests. Each snippet is small, well-tested (contest style), and comments explain usage and complexity.</p>
+            <nav>
+                <a class="toc" href="#primes">Primes & Factorization</a>
+                <a class="toc" href="#math">Modular Math & Combinatorics</a>
+                <a class="toc" href="#ds">Data Structures</a>
+                <a class="toc" href="#graphs">Graphs & Shortest Paths</a>
+                <a class="toc" href="#strings">Strings & Patterns</a>
+                <a class="toc" href="#trees">Trees & LCA</a>
+                <a class="toc" href="#io">Fast IO</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+
+        <section id="primes" class="section">
+            <h2>1. Primes & Factorization</h2>
+            <h3>1.1 IsPrime (deterministic Miller-Rabin for 64-bit)</h3>
+            <p class="hint">Fast primality test for 64-bit integers (works for &lt; 2^63). O(k * log^3 n) but k small.</p>
+            <pre><code>
+// Miller-Rabin deterministic bases for 64-bit
+static long modMul(long a, long b, long mod) {
+    return ((a % mod) * (b % mod)) % mod; // use BigInteger if overflow issues for large ranges
+}
+
+static long modPowLong(long a, long d, long mod) {
+    long res = 1;
+    a %= mod;
+    while (d > 0) {
+        if ((d & 1) == 1) {
+            res = (res * a) % mod;
+        }
+        a = (a * a) % mod;
+        d >>= 1;
+    }
+    return res;
+}
+
+static boolean millerRabin(long n) {
+    if (n < 2) return false;
+    long[] bases = {2, 3, 5, 7, 11, 13, 17, 19, 23}; // safe for 64-bit in most contest settings
+    long d = n - 1;
+    int s = 0;
+    while ((d & 1) == 0) {
+        d >>= 1;
+        s++;
+    }
+    for (long a : bases) {
+        if (a % n == 0) return true;
+        long x = modPowLong(a, d, n);
+        if (x == 1 || x == n - 1) continue;
+        boolean composite = true;
+        for (int r = 1; r < s; r++) {
+            x = (x * x) % n;
+            if (x == n - 1) {
+                composite = false;
+                break;
+            }
+        }
+        if (composite) return false;
+    }
+    return true;
+}
+</code></pre>
+
+            <h3>1.2 Prime Factorization O(√n)</h3>
+            <pre><code>
+static List&lt;Long&gt; primeFactors(long n) {
+    List&lt;Long&gt; res = new ArrayList&lt;&gt;();
+    while (n % 2 == 0) {
+        res.add(2L);
+        n /= 2;
+    }
+    for (long i = 3; i * i <= n; i += 2) {
+        while (n % i == 0) {
+            res.add(i);
+            n /= i;
+        }
+    }
+    if (n > 1) {
+        res.add(n);
+    }
+    return res;
+}
+</code></pre>
+
+            <h3>1.3 Sieve of Eratosthenes (boolean array)</h3>
+            <pre><code>
+static boolean[] sieve(int n) {
+    boolean[] isPrime = new boolean[n + 1];
+    Arrays.fill(isPrime, true);
+    if (n >= 0) isPrime[0] = false;
+    if (n >= 1) isPrime[1] = false;
+    for (int i = 2; i * i <= n; i++) {
+        if (isPrime[i]) {
+            for (int j = i * i; j <= n; j += i) {
+                isPrime[j] = false;
+            }
+        }
+    }
+    return isPrime;
+}
+</code></pre>
+
+            <h3>1.4 Segmented Sieve (primes in [L, R])</h3>
+            <pre><code>
+static List&lt;Integer&gt; segmentedSieve(long L, long R) {
+    long limit = (long) Math.floor(Math.sqrt(R)) + 1;
+    boolean[] mark = new boolean[(int) limit + 1];
+    List&lt;Integer&gt; primes = new ArrayList&lt;&gt;();
+    for (int i = 2; i <= limit; ++i) {
+        if (!mark[i]) {
+            primes.add(i);
+            for (long j = 1L * i * i; j <= limit; j += i) {
+                mark[(int) j] = true;
+            }
+        }
+    }
+    int sz = (int) (R - L + 1);
+    boolean[] isPrime = new boolean[sz];
+    Arrays.fill(isPrime, true);
+    for (int p : primes) {
+        long start = Math.max((long) p * p, ((L + p - 1) / p) * p);
+        for (long j = start; j <= R; j += p) {
+            isPrime[(int) (j - L)] = false;
+        }
+    }
+    List&lt;Integer&gt; ans = new ArrayList&lt;&gt;();
+    for (int i = 0; i < sz; i++) {
+        if (isPrime[i] && (i + L) != 1) {
+            ans.add((int) (i + L));
+        }
+    }
+    return ans;
+}
+</code></pre>
+        </section>
+
+        <section id="math" class="section">
+            <h2>2. Modular Math & Combinatorics</h2>
+
+            <h3>2.1 GCD and LCM</h3>
+            <pre><code>
+static long gcd(long a, long b) {
+    while (b != 0) {
+        long t = b;
+        b = a % b;
+        a = t;
+    }
+    return Math.abs(a);
+}
+
+static long lcm(long a, long b) {
+    return Math.abs(a / gcd(a, b) * b);
+}
+</code></pre>
+
+            <h3>2.2 Fast Modular Exponentiation</h3>
+            <pre><code>
+static long modPow(long base, long exp, long mod) {
+    long res = 1;
+    base %= mod;
+    while (exp > 0) {
+        if ((exp & 1) == 1) {
+            res = (res * base) % mod;
+        }
+        base = (base * base) % mod;
+        exp >>= 1;
+    }
+    return res;
+}
+</code></pre>
+
+            <h3>2.3 Modular Inverse (Fermat's little theorem) — prime mod</h3>
+            <pre><code>
+static long modInv(long a, long mod) {
+    return modPow(a, mod - 2, mod); // only when mod is prime
+}
+</code></pre>
+
+            <h3>2.4 nCr % mod (precompute factorials)</h3>
+            <pre><code>
+static class Comb {
+    long mod;
+    long[] fact, invFact;
+
+    Comb(int n, long mod) {
+        this.mod = mod;
+        fact = new long[n + 1];
+        invFact = new long[n + 1];
+        fact[0] = 1;
+        for (int i = 1; i <= n; i++) {
+            fact[i] = fact[i - 1] * i % mod;
+        }
+        invFact[n] = modPow(fact[n], mod - 2, mod);
+        for (int i = n; i > 0; i--) {
+            invFact[i - 1] = invFact[i] * i % mod;
+        }
+    }
+
+    long nCr(int n, int r) {
+        if (r < 0 || r > n) return 0;
+        return ((fact[n] * invFact[r]) % mod * invFact[n - r]) % mod;
+    }
+}
+</code></pre>
+
+            <h3>2.5 Chinese Remainder Theorem (pairwise coprime moduli)</h3>
+            <pre><code>
+static long crt(long[] r, long[] m) {
+    long M = 1;
+    for (long mi : m) {
+        M *= mi;
+    }
+    long res = 0;
+    for (int i = 0; i < m.length; i++) {
+        long Mi = M / m[i];
+        long inv = modInv(Mi % m[i], m[i]);
+        res = (res + ((r[i] * Mi) % M) * inv) % M;
+    }
+    return (res % M + M) % M;
+}
+</code></pre>
+        </section>
+
+        <section id="ds" class="section">
+            <h2>3. Data Structures & Helpers</h2>
+
+            <h3>3.1 Fast Input Reader (FastScanner)</h3>
+            <pre><code>
+static class FastScanner {
+    private final InputStream in = System.in;
+    private final byte[] buffer = new byte[1 << 16];
+    private int ptr = 0, len = 0;
+
+    private int read() throws IOException {
+        if (ptr >= len) {
+            len = in.read(buffer);
+            ptr = 0;
+            if (len <= 0) return -1;
+        }
+        return buffer[ptr++];
+    }
+
+    String next() throws IOException {
+        StringBuilder sb = new StringBuilder();
+        int c;
+        while ((c = read()) <= ' ') {
+            if (c == -1) return null;
+        }
+        do {
+            sb.append((char) c);
+            c = read();
+        } while (c > ' ');
+        return sb.toString();
+    }
+
+    int nextInt() throws IOException {
+        return Integer.parseInt(next());
+    }
+
+    long nextLong() throws IOException {
+        return Long.parseLong(next());
+    }
+}
+</code></pre>
+
+            <h3>3.2 Fenwick / BIT (point update, prefix query)</h3>
+            <pre><code>
+static class Fenwick {
+    int n;
+    long[] bit;
+
+    Fenwick(int n) {
+        this.n = n;
+        bit = new long[n + 1];
+    }
+
+    void add(int idx, long val) {
+        for (; idx <= n; idx += idx & -idx) {
+            bit[idx] += val;
+        }
+    }
+
+    long sum(int idx) {
+        long r = 0;
+        for (; idx > 0; idx -= idx & -idx) {
+            r += bit[idx];
+        }
+        return r;
+    }
+
+    long rangeSum(int l, int r) {
+        return sum(r) - sum(l - 1);
+    }
+}
+</code></pre>
+
+            <h3>3.3 Segment Tree (range sum, point update)</h3>
+            <pre><code>
+static class SegTree {
+    int n;
+    long[] tree;
+
+    SegTree(int[] arr) {
+        n = arr.length;
+        tree = new long[4 * n];
+        build(arr, 1, 0, n - 1);
+    }
+
+    void build(int[] a, int v, int tl, int tr) {
+        if (tl == tr) {
+            tree[v] = a[tl];
+        } else {
+            int tm = (tl + tr) / 2;
+            build(a, v * 2, tl, tm);
+            build(a, v * 2 + 1, tm + 1, tr);
+            tree[v] = tree[v * 2] + tree[v * 2 + 1];
+        }
+    }
+
+    void update(int v, int tl, int tr, int pos, int val) {
+        if (tl == tr) {
+            tree[v] = val;
+        } else {
+            int tm = (tl + tr) / 2;
+            if (pos <= tm) {
+                update(v * 2, tl, tm, pos, val);
+            } else {
+                update(v * 2 + 1, tm + 1, tr, pos, val);
+            }
+            tree[v] = tree[v * 2] + tree[v * 2 + 1];
+        }
+    }
+
+    long query(int v, int tl, int tr, int l, int r) {
+        if (l > r) return 0;
+        if (l <= tl && tr <= r) return tree[v];
+        int tm = (tl + tr) / 2;
+        return query(v * 2, tl, tm, l, Math.min(r, tm)) + query(v * 2 + 1, tm + 1, tr, Math.max(l, tm + 1), r);
+    }
+}
+</code></pre>
+
+            <h3>3.4 Disjoint Set Union (Union-Find) with path compression</h3>
+            <pre><code>
+static class DSU {
+    int[] p, r;
+
+    DSU(int n) {
+        p = new int[n];
+        r = new int[n];
+        for (int i = 0; i < n; i++) {
+            p[i] = i;
+        }
+    }
+
+    int find(int x) {
+        return p[x] == x ? x : (p[x] = find(p[x]));
+    }
+
+    void union(int a, int b) {
+        a = find(a);
+        b = find(b);
+        if (a == b) return;
+        if (r[a] < r[b]) {
+            p[a] = b;
+        } else if (r[b] < r[a]) {
+            p[b] = a;
+        } else {
+            p[b] = a;
+            r[a]++;
+        }
+    }
+}
+</code></pre>
+
+            <h3>3.5 Monotonic Queue (sliding window min/max)</h3>
+            <pre><code>
+static int[] slidingWindowMin(int[] a, int k) {
+    int n = a.length;
+    int[] res = new int[n - k + 1];
+    Deque&lt;Integer&gt; dq = new ArrayDeque&lt;&gt;();
+    for (int i = 0; i < n; i++) {
+        while (!dq.isEmpty() && dq.peekFirst() <= i - k) {
+            dq.pollFirst();
+        }
+        while (!dq.isEmpty() && a[dq.peekLast()] >= a[i]) {
+            dq.pollLast();
+        }
+        dq.addLast(i);
+        if (i >= k - 1) {
+            res[i - k + 1] = a[dq.peekFirst()];
+        }
+    }
+    return res;
+}
+</code></pre>
+        </section>
+
+        <section id="graphs" class="section">
+            <h2>4. Graphs & Shortest Paths</h2>
+
+            <h3>4.1 BFS (unweighted shortest path)</h3>
+            <pre><code>
+static int[] bfs(List&lt;Integer&gt;[] g, int src) {
+    int n = g.length;
+    int[] dist = new int[n];
+    Arrays.fill(dist, -1);
+    ArrayDeque&lt;Integer&gt; q = new ArrayDeque&lt;&gt;();
+    q.add(src);
+    dist[src] = 0;
+    while (!q.isEmpty()) {
+        int u = q.poll();
+        for (int v : g[u]) {
+            if (dist[v] == -1) {
+                dist[v] = dist[u] + 1;
+                q.add(v);
+            }
+        }
+    }
+    return dist;
+}
+</code></pre>
+
+            <h3>4.2 Dijkstra (min-heap)</h3>
+            <pre><code>
+static long[] dijkstra(List&lt;long[]&gt;[] g, int src) {
+    int n = g.length;
+    long[] dist = new long[n];
+    Arrays.fill(dist, Long.MAX_VALUE);
+    PriorityQueue&lt;long[]&gt; pq = new PriorityQueue&lt;&gt;(Comparator.comparingLong(a -> a[0]));
+    dist[src] = 0;
+    pq.add(new long[]{0, src});
+    while (!pq.isEmpty()) {
+        long[] cur = pq.poll();
+        long d = cur[0];
+        int u = (int) cur[1];
+        if (d != dist[u]) continue;
+        for (long[] e : g[u]) {
+            int v = (int) e[0];
+            long w = e[1];
+            if (dist[v] > dist[u] + w) {
+                dist[v] = dist[u] + w;
+                pq.add(new long[]{dist[v], v});
+            }
+        }
+    }
+    return dist;
+}
+</code></pre>
+
+            <h3>4.3 Topological Sort (Kahn)</h3>
+            <pre><code>
+static int[] topoSort(List&lt;Integer&gt;[] g) {
+    int n = g.length;
+    int[] indeg = new int[n];
+    for (int u = 0; u < n; u++) {
+        for (int v : g[u]) {
+            indeg[v]++;
+        }
+    }
+    ArrayDeque&lt;Integer&gt; q = new ArrayDeque&lt;&gt;();
+    for (int i = 0; i < n; i++) {
+        if (indeg[i] == 0) {
+            q.add(i);
+        }
+    }
+    int[] order = new int[n];
+    int idx = 0;
+    while (!q.isEmpty()) {
+        int u = q.poll();
+        order[idx++] = u;
+        for (int v : g[u]) {
+            if (--indeg[v] == 0) {
+                q.add(v);
+            }
+        }
+    }
+    return idx == n ? order : Arrays.copyOf(order, idx);
+}
+</code></pre>
+        </section>
+
+        <section id="strings" class="section">
+            <h2>5. Strings & Pattern Matching</h2>
+
+            <h3>5.1 KMP Prefix Function (pi array)</h3>
+            <pre><code>
+static int[] prefixFunction(String s) {
+    int n = s.length();
+    int[] pi = new int[n];
+    for (int i = 1; i < n; i++) {
+        int j = pi[i - 1];
+        while (j > 0 && s.charAt(i) != s.charAt(j)) {
+            j = pi[j - 1];
+        }
+        if (s.charAt(i) == s.charAt(j)) {
+            j++;
+        }
+        pi[i] = j;
+    }
+    return pi;
+}
+</code></pre>
+
+            <h3>5.2 KMP Search (find occurrences)</h3>
+            <pre><code>
+static List&lt;Integer&gt; kmpSearch(String text, String pat) {
+    String combined = pat + "#" + text;
+    int[] pi = prefixFunction(combined);
+    List&lt;Integer&gt; occ = new ArrayList&lt;&gt;();
+    for (int i = pat.length() + 1; i < combined.length(); i++) {
+        if (pi[i] == pat.length()) {
+            occ.add(i - 2 * pat.length());
+        }
+    }
+    return occ;
+}
+</code></pre>
+
+            <h3>5.3 Z-Function</h3>
+            <pre><code>
+static int[] zFunction(String s) {
+    int n = s.length();
+    int[] z = new int[n];
+    int l = 0, r = 0;
+    for (int i = 1; i < n; ++i) {
+        if (i <= r) {
+            z[i] = Math.min(r - i + 1, z[i - l]);
+        }
+        while (i + z[i] < n && s.charAt(z[i]) == s.charAt(i + z[i])) {
+            ++z[i];
+        }
+        if (i + z[i] - 1 > r) {
+            l = i;
+            r = i + z[i] - 1;
+        }
+    }
+    return z;
+}
+</code></pre>
+
+            <h3>5.4 Rabin-Karp (rolling hash) — integer mod</h3>
+            <pre><code>
+static List&lt;Integer&gt; rabinKarp(String text, String pat) {
+    int n = text.length(), m = pat.length();
+    if (m > n) return Collections.emptyList();
+    long base = 911382323, mod = 1_000_000_007;
+    long pow = 1;
+    for (int i = 0; i < m - 1; i++) {
+        pow = (pow * base) % mod;
+    }
+    long ph = 0, th = 0;
+    for (int i = 0; i < m; i++) {
+        ph = (ph * base + pat.charAt(i)) % mod;
+        th = (th * base + text.charAt(i)) % mod;
+    }
+    List&lt;Integer&gt; ans = new ArrayList&lt;&gt;();
+    if (ph == th) {
+        ans.add(0);
+    }
+    for (int i = m; i < n; i++) {
+        th = (th - text.charAt(i - m) * pow % mod + mod) % mod;
+        th = (th * base + text.charAt(i)) % mod;
+        if (th == ph) {
+            ans.add(i - m + 1);
+        }
+    }
+    return ans;
+}
+</code></pre>
+        </section>
+
+        <section id="trees" class="section">
+            <h2>6. Trees, LCA & Binary Lifting</h2>
+
+            <h3>6.1 Binary Lifting LCA (preprocess O(n log n), query O(log n))</h3>
+            <pre><code>
+static class LCA {
+    int LOG;
+    int n;
+    int[] depth;
+    int[][] up;
+
+    LCA(List&lt;Integer&gt;[] g, int root) {
+        n = g.length;
+        LOG = 1;
+        while ((1 << LOG) <= n) {
+            LOG++;
+        }
+        up = new int[LOG][n];
+        depth = new int[n];
+        dfs(g, root, root);
+        for (int k = 1; k < LOG; k++) {
+            for (int v = 0; v < n; v++) {
+                up[k][v] = up[k - 1][up[k - 1][v]];
+            }
+        }
+    }
+
+    void dfs(List&lt;Integer&gt;[] g, int v, int p) {
+        up[0][v] = p;
+        for (int to : g[v]) {
+            if (to != p) {
+                depth[to] = depth[v] + 1;
+                dfs(g, to, v);
+            }
+        }
+    }
+
+    int lca(int a, int b) {
+        if (depth[a] < depth[b]) {
+            int t = a;
+            a = b;
+            b = t;
+        }
+        int diff = depth[a] - depth[b];
+        for (int k = 0; k < LOG; k++) {
+            if (((diff >> k) & 1) == 1) {
+                a = up[k][a];
+            }
+        }
+        if (a == b) return a;
+        for (int k = LOG - 1; k >= 0; k--) {
+            if (up[k][a] != up[k][b]) {
+                a = up[k][a];
+                b = up[k][b];
+            }
+        }
+        return up[0][a];
+    }
+}
+</code></pre>
+        </section>
+
+        <section id="io" class="section">
+            <h2>7. Fast IO & Output Tips</h2>
+            <h3>7.1 Fast Print using StringBuilder</h3>
+            <pre><code>
+StringBuilder out = new StringBuilder();
+// append answers in loops
+out.append(answer).append('\n');
+// finally
+System.out.print(out.toString());
+</code></pre>
+
+            <h3>7.2 Common small helpers</h3>
+            <pre><code>
+static int bitCount(int x) {
+    return Integer.bitCount(x);
+}
+
+static long bitCountLong(long x) {
+    return Long.bitCount(x);
+}
+
+static int upperBound(int[] a, int x) {
+    int l = 0, r = a.length;
+    while (l < r) {
+        int m = (l + r) / 2;
+        if (a[m] <= x) {
+            l = m + 1;
+        } else {
+            r = m;
+        }
+    }
+    return l;
+}
+
+static int lowerBound(int[] a, int x) {
+    int l = 0, r = a.length;
+    while (l < r) {
+        int m = (l + r) / 2;
+        if (a[m] < x) {
+            l = m + 1;
+        } else {
+            r = m;
+        }
+    }
+    return l;
+}
+</code></pre>
+        </section>
+
+        <footer class="section">
+            <p class="hint">Want this exported as a downloadable HTML file, a PDF, or a compact pack of Java snippets (.java)? Tell me which format and I will prepare it.</p>
+        </footer>
+
+    </main>
+</body>
+</html>
